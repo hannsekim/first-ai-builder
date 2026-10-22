@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Count With Me!</title>
+<style>
+  :root{
+    --sun:#FFC72C; --sun-dark:#E8A600; --tomato:#F25C3B; --sky:#3BB4E8;
+    --leaf:#4CC46A; --grape:#8A5CD6; --cream:#FFF8E6; --ink:#2B2340;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Comic Sans MS","Chalkboard SE","Trebuchet MS",system-ui,sans-serif;
+    background:var(--cream) radial-gradient(circle at 20% 10%,#FFE9A8 0 120px,transparent 121px),
+               radial-gradient(circle at 90% 80%,#D6F0FF 0 160px,transparent 161px);
+    color:var(--ink); overflow-x:hidden;
+  }
+  header{
+    background:var(--sun); border-bottom:6px solid var(--sun-dark);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px; position:sticky; top:0; z-index:5;
+  }
+  header h1{margin:0;font-size:clamp(20px,6vw,30px);letter-spacing:1px}
+  header h1 span:nth-child(1){color:var(--tomato)}
+  header h1 span:nth-child(2){color:var(--grape)}
+  header h1 span:nth-child(3){color:var(--leaf)}
+  .stars{background:#fff;border-radius:30px;padding:6px 14px;font-size:22px;font-weight:bold;border:3px solid var(--ink)}
+  main{max-width:720px;margin:0 auto;padding:14px 16px 110px}
+  .card{background:#fff;border:4px solid var(--ink);border-radius:26px;padding:16px;margin:12px 0;box-shadow:0 6px 0 var(--ink)}
+  .buddy{display:flex;gap:12px;align-items:center}
+  .buddy svg{flex:0 0 70px}
+  .bubble{background:#E8F7FF;border:3px solid var(--sky);border-radius:20px;padding:10px 14px;font-size:20px;flex:1;min-height:56px}
+  .levels{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .lvl{font:inherit;font-size:18px;padding:8px 14px;border-radius:20px;border:3px solid var(--ink);background:#fff;cursor:pointer}
+  .lvl.on{background:var(--grape);color:#fff}
+  .big-num{font-size:clamp(90px,30vw,160px);font-weight:bold;text-align:center;line-height:1;color:var(--tomato);text-shadow:4px 4px 0 var(--sun)}
+  .word{text-align:center;font-size:28px;margin:4px 0 10px}
+  .things{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;min-height:80px}
+  .thing{width:64px;height:64px;font-size:46px;display:grid;place-items:center;border-radius:18px;background:#FFF3C4;border:3px dashed var(--sun-dark);cursor:pointer;transition:transform .15s}
+  .thing.tapped{background:var(--leaf);border-style:solid;border-color:#2E8F48;transform:scale(1.1)}
+  .thing .n{position:absolute;font-size:16px;color:#fff;font-weight:bold;margin-top:52px}
+  .thing{position:relative}
+  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+  .btn{font:inherit;font-size:22px;font-weight:bold;padding:12px 20px;border-radius:22px;border:4px solid var(--ink);cursor:pointer;box-shadow:0 5px 0 var(--ink);color:#fff;min-width:64px}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+  .b-sky{background:var(--sky)} .b-leaf{background:var(--leaf)} .b-tom{background:var(--tomato)} .b-grape{background:var(--grape)} .b-sun{background:var(--sun);color:var(--ink)}
+  .choice{font-size:40px;min-width:84px;min-height:84px;background:#fff;color:var(--ink)}
+  canvas{display:block;margin:0 auto;background:#fff;border:4px dashed var(--sky);border-radius:20px;touch-action:none;width:100%;max-width:320px;aspect-ratio:1/1}
+  nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--ink);padding:8px;gap:6px;z-index:5}
+  nav button{flex:1;font:inherit;font-size:15px;color:#fff;background:transparent;border:0;border-radius:16px;padding:8px 2px;cursor:pointer}
+  nav button .i{display:block;font-size:28px}
+  nav button.on{background:var(--sun);color:var(--ink)}
+  .screen{display:none} .screen.on{display:block}
+  .sticker-book{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .sticker{aspect-ratio:1;border-radius:16px;border:3px dashed #ccc;display:grid;place-items:center;font-size:34px;filter:grayscale(1);opacity:.3}
+  .sticker.got{filter:none;opacity:1;border:3px solid var(--leaf);background:#EFFFF2}
+  .party{position:fixed;inset:0;pointer-events:none;z-index:9;overflow:hidden}
+  .confetti{position:absolute;top:-20px;font-size:28px;animation:fall 1.6s linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+  .wiggle{animation:wig .5s}
+  @keyframes wig{25%{transform:rotate(-6deg)}75%{transform:rotate(6deg)}}
+  h2{margin:4px 0 10px;text-align:center;color:var(--grape)}
+  .order{display:flex;align-items:center;justify-content:center;gap:10px;font-size:22px}
+  .order b{font-size:56px;color:#fff;background:var(--grape);border:4px solid var(--ink);border-radius:50%;width:84px;height:84px;display:grid;place-items:center}
+  .road{background:linear-gradient(#fff 0 78%,#9AA0A6 78% 100%);border-radius:16px;overflow:hidden;padding:6px 0 4px}
+  .jeep{position:relative;width:100%;max-width:340px;margin:0 auto;transition:transform 1.6s ease-in}
+  .jeep svg{width:100%;display:block}
+  .jeep.drive{transform:translateX(130vw)} .jeep.enter{transform:translateX(-130vw);transition:none}
+  .seats{position:absolute;left:12%;right:12%;top:29%;height:32%;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:2px}
+  .seats div{font-size:clamp(18px,6vw,28px);line-height:1;cursor:pointer;animation:hop .3s}
+  @keyframes hop{0%{transform:translateY(-30px)}100%{transform:none}}
+  .count-big{text-align:center;font-size:48px;font-weight:bold;color:var(--tomato)}
+  .hint{text-align:center;margin:0 0 6px;font-size:16px}
+  .stop{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;background:#EFFFF2;border:3px dashed var(--leaf);border-radius:18px;padding:10px;min-height:76px}
+  .stop button{font-size:40px;width:60px;height:60px;border-radius:50%;border:3px solid var(--ink);background:#fff;cursor:pointer;padding:0}
+  .teacher{font-family:system-ui,sans-serif;font-size:15px}
+  .teacher td,.teacher th{border-bottom:1px solid #ddd;padding:6px;text-align:left}
+  .teacher table{width:100%;border-collapse:collapse}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span>Count</span> <span>With</span> <span>Me!</span></h1>
+  <div class="stars">⭐ <span id="starCount">0</span></div>
+</header>
+
+<main>
+  <!-- Buddy (the "AI" coach) -->
+  <div class="card buddy">
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="15" y="25" width="70" height="60" rx="18" fill="#3BB4E8" stroke="#2B2340" stroke-width="4"/>
+      <line x1="50" y1="25" x2="50" y2="10" stroke="#2B2340" stroke-width="4"/>
+      <circle cx="50" cy="9" r="6" fill="#F25C3B" stroke="#2B2340" stroke-width="3"/>
+      <circle cx="37" cy="50" r="9" fill="#fff"/><circle cx="63" cy="50" r="9" fill="#fff"/>
+      <circle cx="39" cy="51" r="4" fill="#2B2340"/><circle cx="65" cy="51" r="4" fill="#2B2340"/>
+      <path d="M35 68 Q50 80 65 68" stroke="#2B2340" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </svg>
+    <div class="bubble" id="bubble">Hi! I'm Bilang Bot. Let's count!</div>
+  </div>
+
+  <div class="levels" id="levels"></div>
+
+  <!-- 1. LEARN: see, hear, tap-count -->
+  <section class="screen on" id="s-learn">
+    <div class="card">
+      <div class="big-num" id="learnNum">1</div>
+      <div class="word" id="learnWord">one</div>
+      <div class="things" id="learnThings"></div>
+      <div class="row">
+        <button class="btn b-tom" id="prevBtn" aria-label="Previous">◀</button>
+        <button class="btn b-sky" id="sayBtn">🔊 Hear</button>
+        <button class="btn b-tom" id="nextBtn" aria-label="Next">▶</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. TRACE -->
+  <section class="screen" id="s-trace">
+    <div class="card">
+      <h2>Trace the number ✏️</h2>
+      <canvas id="pad" width="600" height="600"></canvas>
+      <div class="row">
+        <button class="btn b-sky" id="traceSay">🔊</button>
+        <button class="btn b-grape" id="traceWatch">👀 Watch me</button>
+        <button class="btn b-sun" id="traceClear">🧽 Clear</button>
+        <button class="btn b-leaf" id="traceCheck">✅ Done</button>
+        <button class="btn b-tom" id="traceNext">▶</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. PLAY: how many? -->
+  <section class="screen" id="s-play">
+    <div class="card">
+      <h2>Jeepney Ride! 🚍</h2>
+      <div class="order"><span>Ride needs</span><b id="goal">3</b><span>passengers</span></div>
+      <div class="road">
+        <div class="jeep" id="jeep">
+          <svg viewBox="0 0 320 170" aria-hidden="true">
+            <rect x="20" y="20" width="280" height="105" rx="18" fill="#F25C3B" stroke="#2B2340" stroke-width="6"/>
+            <rect x="20" y="20" width="280" height="22" rx="10" fill="#FFC72C" stroke="#2B2340" stroke-width="6"/>
+            <rect x="34" y="50" width="252" height="52" rx="8" fill="#FFF8E6" stroke="#2B2340" stroke-width="5"/>
+            <path d="M20 112 H300" stroke="#3BB4E8" stroke-width="8"/>
+            <circle cx="290" cy="85" r="7" fill="#FFC72C" stroke="#2B2340" stroke-width="3"/>
+            <circle cx="80" cy="132" r="22" fill="#2B2340"/><circle cx="80" cy="132" r="9" fill="#ccc"/>
+            <circle cx="240" cy="132" r="22" fill="#2B2340"/><circle cx="240" cy="132" r="9" fill="#ccc"/>
+          </svg>
+          <div class="seats" id="seats"></div>
+        </div>
+      </div>
+      <div class="count-big"><span id="riders">0</span></div>
+      <p class="hint">Tap a friend to get on. Tap in the jeepney to get off.</p>
+      <div class="stop" id="stop"></div>
+      <div class="row">
+        <button class="btn b-sky" id="playSay">🔊</button>
+        <button class="btn b-leaf" id="goBtn">🚦 GO!</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. STICKERS -->
+  <section class="screen" id="s-stickers">
+    <div class="card">
+      <h2>My Sticker Book 🏆</h2>
+      <p style="text-align:center;font-size:18px">Every 5 stars = a new sticker!</p>
+      <div class="sticker-book" id="book"></div>
+    </div>
+    <div class="card teacher">
+      <h3 style="margin-top:0">For the teacher</h3>
+      <table id="report"></table>
+      <div class="row"><button class="btn b-grape" id="resetBtn" style="font-size:16px">Reset progress</button></div>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button class="on" data-s="learn"><span class="i">👀</span>Learn</button>
+  <button data-s="trace"><span class="i">✏️</span>Trace</button>
+  <button data-s="play"><span class="i">🎮</span>Play</button>
+  <button data-s="stickers"><span class="i">🏆</span>Stickers</button>
+</nav>
+<div class="party" id="party"></div>
+
+<script>
+/* =========================================================
+   ✏️ YOUR CONTENT — edit everything in this block
+   ========================================================= */
+const CONTENT = {
+  buddyName: "Bilang Bot",
+  language: "en-US",          // voice: "en-US", or "fil-PH" for Filipino if the device has it
+  words: ["zero","one","two","three","four","five","six","seven","eight","nine","ten",
+          "eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty"],
+  things: ["🥭","🐟","🌼","🐔","⭐","🍌","🐢","🎈","🚌","🐥"],   // objects to count
+  levels: [                    // differentiation: teacher or child picks a level
+    {name:"🐣 1–3",  max:3},
+    {name:"🐥 1–5",  max:5},
+    {name:"🐔 1–10", max:10},
+    {name:"🦅 1–20", max:20}
+  ],
+  praise: ["Great job!","You did it!","Wow, super counting!","Ang galing mo!","High five!"],
+  tryAgain: ["Let's count together.","Almost! Touch each one.","Try again, you can do it!"],
+  passengers: ["👧","👦","👵","👴","👩","👨","🧒","🐶","🐱","🐔"],  // who rides the jeepney
+  stickers: ["🦄","🚀","🌈","🐳","🦁","🍉","🎨","🐙","🌻","🏝️"]
+};
+/* ========================================================= */
+
+const $ = id => document.getElementById(id);
+let state = JSON.parse(localStorageGet("countState") || "null") || {stars:0, level:0, stats:{}};
+let learnN = 1, traceN = 1;
+
+function localStorageGet(k){ try{return localStorage.getItem(k)}catch(e){return null} }
+function save(){ try{localStorage.setItem("countState",JSON.stringify(state))}catch(e){} }
+const max = () => CONTENT.levels[state.level].max;
+const pick = a => a[Math.floor(Math.random()*a.length)];
+
+/* ---------- AUDIO ---------- */
+function say(text){
+  $("bubble").textContent = text;
+  if(!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = CONTENT.language; u.rate = 0.8; u.pitch = 1.2;
+  speechSynthesis.speak(u);
+}
+function ding(ok){
+  try{
+    const c = new (window.AudioContext||window.webkitAudioContext)();
+    const o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.frequency.value = ok ? 880 : 220; g.gain.value = .15;
+    o.start(); o.stop(c.currentTime + (ok?.15:.3));
+  }catch(e){}
+}
+
+/* ---------- STARS + REWARDS ---------- */
+function addStar(){
+  const before = Math.floor(state.stars/5);
+  state.stars++; save(); $("starCount").textContent = state.stars;
+  confetti();
+  if(Math.floor(state.stars/5) > before && before < CONTENT.stickers.length){
+    setTimeout(()=>say("You won a new sticker! " ),900);
+  }
+  drawBook();
+}
+function confetti(){
+  for(let i=0;i<18;i++){
+    const s=document.createElement("div"); s.className="confetti";
+    s.textContent=pick(["⭐","🎉","🌟","✨"]); s.style.left=Math.random()*100+"vw";
+    s.style.animationDelay=Math.random()*.4+"s"; $("party").appendChild(s);
+    setTimeout(()=>s.remove(),2200);
+  }
+}
+
+/* ---------- "AI" BUDDY: adaptive coach ----------
+   Tracks right/wrong per number. Picks practice numbers
+   the child struggles with more often, and moves levels
+   up after a streak or down after repeated misses. */
+function record(n, ok){
+  const s = state.stats[n] || (state.stats[n]={right:0,wrong:0});
+  ok ? s.right++ : s.wrong++;
+  state.streak = ok ? (state.streak||0)+1 : 0;
+  state.misses = ok ? 0 : (state.misses||0)+1;
+  if(state.streak>=5 && state.level<CONTENT.levels.length-1){
+    state.level++; state.streak=0; drawLevels();
+    setTimeout(()=>say("You are ready for bigger numbers! Now up to "+max()+"!"),1200);
+  }
+  if(state.misses>=3 && state.level>0){
+    state.level--; state.misses=0; drawLevels();
+    setTimeout(()=>say("Let's practice smaller numbers first."),1200);
+  }
+  save(); drawReport();
+}
+function smartPick(){
+  const nums=[]; for(let n=1;n<=max();n++){
+    const s=state.stats[n]||{right:0,wrong:0};
+    const weight = 1 + s.wrong*2 + (s.right<2?2:0);
+    for(let w=0;w<weight;w++) nums.push(n);
+  }
+  return pick(nums);
+}
+
+/* ---------- LEVELS ---------- */
+function drawLevels(){
+  $("levels").innerHTML="";
+  CONTENT.levels.forEach((l,i)=>{
+    const b=document.createElement("button"); b.className="lvl"+(i===state.level?" on":"");
+    b.textContent=l.name; b.onclick=()=>{state.level=i;save();drawLevels();learnN=1;traceN=1;refresh()};
+    $("levels").appendChild(b);
+  });
+}
+
+/* ---------- LEARN ---------- */
+function drawLearn(){
+  if(learnN>max()) learnN=1;
+  $("learnNum").textContent=learnN; $("learnWord").textContent=CONTENT.words[learnN];
+  const t=CONTENT.things[(learnN-1)%CONTENT.things.length];
+  const box=$("learnThings"); box.innerHTML=""; let count=0;
+  for(let i=0;i<learnN;i++){
+    const d=document.createElement("div"); d.className="thing"; d.textContent=t;
+    d.onclick=()=>{ if(d.classList.contains("tapped"))return;
+      count++; d.classList.add("tapped");
+      const n=document.createElement("span"); n.className="n"; n.textContent=count; d.appendChild(n);
+      say(CONTENT.words[count]);
+      if(count===learnN){ setTimeout(()=>{say(learnN+"! "+pick(CONTENT.praise)); addStar()},700); }
+    };
+    box.appendChild(d);
+  }
+  say("This is "+CONTENT.words[learnN]+". Touch each one and count!");
+}
+$("sayBtn").onclick=()=>say(CONTENT.words[learnN]);
+$("nextBtn").onclick=()=>{learnN=learnN>=max()?1:learnN+1;drawLearn()};
+$("prevBtn").onclick=()=>{learnN=learnN<=1?max():learnN-1;drawLearn()};
+
+/* ---------- TRACE ---------- */
+const pad=$("pad"), ctx=pad.getContext("2d");
+/* Stroke order for each digit, in a 0–1 box (x right, y down).
+   Each digit = list of strokes, drawn in order, each stroke in its direction. */
+function arc(cx,cy,rx,ry,a0,a1){ const p=[],n=24;
+  for(let i=0;i<=n;i++){const a=(a0+(a1-a0)*i/n)*Math.PI/180; p.push([cx+rx*Math.cos(a),cy+ry*Math.sin(a)]);} return p; }
+const STROKES={
+  0:[arc(.5,.5,.38,.42,-90,-450)],
+  1:[[[.5,.08],[.5,.92]]],
+  2:[[...arc(.5,.32,.32,.24,200,390),[.12,.92],[.9,.92]]],
+  3:[[...arc(.5,.3,.3,.22,200,450),...arc(.5,.72,.34,.2,-90,160)]],
+  4:[[[.62,.08],[.12,.64],[.92,.64]],[[.68,.34],[.68,.92]]],
+  5:[[[.28,.1],[.24,.46],...arc(.5,.68,.32,.24,-130,160)],[[.28,.1],[.85,.1]]],
+  6:[[[.75,.08],[.42,.32],[.22,.62],...arc(.5,.7,.28,.22,180,-180)]],
+  7:[[[.12,.1],[.88,.1],[.38,.92]]],
+  8:[[...arc(.5,.28,.26,.2,-30,-270),...arc(.5,.7,.32,.22,-90,270),...arc(.5,.28,.26,.2,90,-30)]],
+  9:[[...arc(.5,.3,.3,.22,0,-360),[.78,.92]]]
+};
+/* Place each digit of the number into its own box on the 600×600 pad */
+function numberStrokes(n){
+  const ds=String(n).split(""), out=[];
+  const boxes = ds.length===1 ? [[160,60,280,480]] : [[50,90,230,420],[320,90,230,420]];
+  ds.forEach((d,i)=>{ const [x,y,w,h]=boxes[i];
+    STROKES[d].forEach(s=>out.push(s.map(([u,v])=>[x+u*w,y+v*h]))); });
+  return out;
+}
+function path(c,s){ c.beginPath(); c.moveTo(s[0][0],s[0][1]); s.forEach(p=>c.lineTo(p[0],p[1])); }
+function arrowAt(c,a,b){ const ang=Math.atan2(b[1]-a[1],b[0]-a[0]);
+  c.save(); c.translate(a[0],a[1]); c.rotate(ang); c.fillStyle="#8A5CD6";
+  c.beginPath(); c.moveTo(14,0); c.lineTo(-8,-11); c.lineTo(-8,11); c.closePath(); c.fill(); c.restore(); }
+
+const core=document.createElement("canvas"); core.width=core.height=600; const gctx=core.getContext("2d");
+const band=document.createElement("canvas"); band.width=band.height=600; const bctx=band.getContext("2d");
+let drawing=false, last=null, traceStrokes=[];
+function drawGuide(speak=true){
+  if(traceN>max()) traceN=1;
+  traceStrokes=numberStrokes(traceN);
+  [ctx,gctx,bctx].forEach(c=>{c.clearRect(0,0,600,600); c.lineCap=c.lineJoin="round";});
+  traceStrokes.forEach(s=>{
+    ctx.strokeStyle="#E6E1F5"; ctx.lineWidth=70; path(ctx,s); ctx.stroke();      // fat path to trace
+    gctx.strokeStyle="#000"; gctx.lineWidth=30; path(gctx,s); gctx.stroke();     // must cover this
+    bctx.strokeStyle="#000"; bctx.lineWidth=110; path(bctx,s); bctx.stroke();    // stay inside this
+  });
+  traceStrokes.forEach(s=>{
+    ctx.setLineDash([10,12]); ctx.lineWidth=4; ctx.strokeStyle="#B9A6E8"; path(ctx,s); ctx.stroke(); ctx.setLineDash([]);
+    // direction arrows spaced along the stroke
+    let dist=0; for(let i=1;i<s.length;i++){
+      const a=s[i-1], b=s[i]; dist+=Math.hypot(b[0]-a[0],b[1]-a[1]);
+      if(dist>70 && i<s.length-1){ arrowAt(ctx,b,s[i+1]); dist=0; }
+    }
+  });
+  // numbered green start dots (drawn last so they sit on top)
+  traceStrokes.forEach((s,k)=>{
+    ctx.fillStyle="#4CC46A"; ctx.strokeStyle="#2B2340"; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.arc(s[0][0],s[0][1],22,0,7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle="#fff"; ctx.font="bold 26px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(k+1,s[0][0],s[0][1]+1);
+  });
+  if(speak) say("Start at the green dot. Follow the arrows to trace "+CONTENT.words[traceN]+".");
+}
+/* Watch me: a star moves along each stroke in order */
+let watching=false;
+function watchMe(){
+  if(watching) return; watching=true; drawGuide(false);
+  say("Watch me. Start at the green dot, and follow the arrows.");
+  const base=ctx.getImageData(0,0,600,600);
+  let k=0,i=0;
+  (function step(){
+    if(k>=traceStrokes.length){ watching=false; setTimeout(()=>{drawGuide(false); say("Now you try!")},500); return; }
+    const s=traceStrokes[k];
+    ctx.putImageData(base,0,0);
+    ctx.strokeStyle="#FFC72C"; ctx.lineWidth=26; ctx.lineCap="round";
+    for(let j=0;j<k;j++){ path(ctx,traceStrokes[j]); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(s[0][0],s[0][1]); for(let j=0;j<=i;j++) ctx.lineTo(s[j][0],s[j][1]); ctx.stroke();
+    ctx.font="44px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("⭐",s[i][0],s[i][1]);
+    i++; if(i>=s.length){ i=0; k++; }
+    setTimeout(step,45);
+  })();
+}
+$("traceWatch").onclick=watchMe;
+function pos(e){ const r=pad.getBoundingClientRect(), p=e.touches?e.touches[0]:e;
+  return {x:(p.clientX-r.left)*600/r.width, y:(p.clientY-r.top)*600/r.height}; }
+function start(e){e.preventDefault();drawing=true;last=pos(e)}
+function move(e){ if(!drawing)return; e.preventDefault(); const p=pos(e);
+  ctx.strokeStyle="#F25C3B"; ctx.lineWidth=38; ctx.lineCap=ctx.lineJoin="round";
+  ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last=p; }
+function end(){drawing=false}
+["mousedown","touchstart"].forEach(ev=>pad.addEventListener(ev,start,{passive:false}));
+["mousemove","touchmove"].forEach(ev=>pad.addEventListener(ev,move,{passive:false}));
+["mouseup","mouseleave","touchend"].forEach(ev=>pad.addEventListener(ev,end));
+function checkTrace(){
+  if(watching) return;
+  const g=gctx.getImageData(0,0,600,600).data, bd=bctx.getImageData(0,0,600,600).data, d=ctx.getImageData(0,0,600,600).data;
+  let inside=0, covered=0, outside=0;
+  for(let i=0;i<g.length;i+=16){
+    const isRed = d[i]>200 && d[i+1]<140 && d[i+2]<120;
+    if(g[i+3]>0){ inside++; if(isRed) covered++; }
+    else if(bd[i+3]===0 && isRed) outside++;
+  }
+  const score=covered/inside, mess=outside/(covered+1);
+  const ok = score>0.6 && mess<0.6;
+  ding(ok); record(traceN,ok);
+  if(ok){ say(pick(CONTENT.praise)+" That is "+CONTENT.words[traceN]+"!"); addStar(); }
+  else { pad.classList.add("wiggle"); setTimeout(()=>pad.classList.remove("wiggle"),500);
+         say(score<=0.6?"Trace all of the number. Try again!":"Stay inside the lines. Try again!"); }
+}
+$("traceCheck").onclick=checkTrace;
+$("traceClear").onclick=drawGuide;
+$("traceSay").onclick=()=>say(CONTENT.words[traceN]);
+$("traceNext").onclick=()=>{traceN=traceN>=max()?1:traceN+1;drawGuide()};
+
+/* ---------- PLAY ---------- */
+/* JEEPNEY RIDE: the child must PUT the right number of riders in,
+   then press GO. Builds "make a set of N" (harder than "how many?"). */
+let answer=1, riders=[], busy=false;
+function askRide(){ say("The jeepney needs "+CONTENT.words[answer]+" passengers. Tap friends to get on!"); }
+function drawRide(){
+  $("riders").textContent=riders.length;
+  $("seats").innerHTML=""; riders.forEach((p,i)=>{
+    const d=document.createElement("div"); d.textContent=p;
+    d.onclick=()=>{ if(busy)return; riders.splice(i,1); waiting.push(p); drawRide(); say(riders.length?CONTENT.words[riders.length]:"zero"); };
+    $("seats").appendChild(d); });
+  $("stop").innerHTML=""; waiting.forEach((p,i)=>{
+    const b=document.createElement("button"); b.textContent=p; b.setAttribute("aria-label","passenger");
+    b.onclick=()=>{ if(busy)return; waiting.splice(i,1); riders.push(p); drawRide(); say(CONTENT.words[riders.length]); };
+    $("stop").appendChild(b); });
+}
+let waiting=[];
+function newQuestion(){
+  busy=false; answer=smartPick(); riders=[];
+  const extra=Math.min(answer+2, 20);                 // a few more friends than needed
+  waiting=Array.from({length:extra},()=>pick(CONTENT.passengers));
+  $("goal").textContent=answer;
+  const j=$("jeep"); j.classList.remove("drive"); j.classList.add("enter");
+  requestAnimationFrame(()=>requestAnimationFrame(()=>j.classList.remove("enter")));
+  drawRide(); askRide();
+}
+$("goBtn").onclick=()=>{
+  if(busy) return;
+  const ok=riders.length===answer; ding(ok); record(answer,ok);
+  if(ok){ busy=true; say("Beep beep! "+CONTENT.words[answer]+" passengers. "+pick(CONTENT.praise));
+    $("jeep").classList.add("drive"); addStar(); setTimeout(newQuestion,2600); }
+  else { $("jeep").classList.add("wiggle"); setTimeout(()=>$("jeep").classList.remove("wiggle"),500);
+    say(riders.length<answer ? "We need more! Count again." : "Too many! Tap someone to get off."); }
+};
+$("playSay").onclick=askRide;
+
+/* ---------- STICKERS + TEACHER REPORT ---------- */
+function drawBook(){
+  const got=Math.floor(state.stars/5);
+  $("book").innerHTML=CONTENT.stickers.map((s,i)=>`<div class="sticker ${i<got?"got":""}">${s}</div>`).join("");
+}
+function drawReport(){
+  let rows="<tr><th>Number</th><th>✅</th><th>❌</th><th>Note</th></tr>";
+  for(let n=1;n<=max();n++){ const s=state.stats[n]||{right:0,wrong:0};
+    const note = s.right+s.wrong===0?"not tried": s.wrong>s.right?"needs practice": s.right>=3?"strong":"growing";
+    rows+=`<tr><td>${n}</td><td>${s.right}</td><td>${s.wrong}</td><td>${note}</td></tr>`; }
+  $("report").innerHTML=rows;
+}
+$("resetBtn").onclick=()=>{ if(confirm("Reset all stars and progress?")){ state={stars:0,level:0,stats:{}}; save(); location.reload(); } };
+
+/* ---------- NAV ---------- */
+let current="learn";
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));
+  current=b.dataset.s; $("s-"+current).classList.add("on"); refresh();
+});
+function refresh(){
+  if(current==="learn") drawLearn();
+  if(current==="trace") drawGuide();
+  if(current==="play") newQuestion();
+  if(current==="stickers"){ drawBook(); drawReport(); say("Look at your stickers!"); }
+}
+
+$("bubble").textContent="Hi! I'm "+CONTENT.buddyName+". Tap ▶ or a number to start!";
+$("starCount").textContent=state.stars;
+drawLevels(); drawBook(); drawReport();
+// draw first screen without talking until the child taps (browsers block audio before a tap)
+(function(){ const s=say; say=t=>{$("bubble").textContent=t}; drawLearn(); say=s; })();
+</script>
+</body>
+</html>
