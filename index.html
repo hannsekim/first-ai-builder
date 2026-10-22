@@ -85,6 +85,7 @@
   .count-big{text-align:center;font-size:48px;font-weight:bold;color:var(--tomato)}
   .hint{text-align:center;margin:0 0 6px;font-size:16px}
   .stop{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;background:#EFFFF2;border:3px dashed var(--leaf);border-radius:18px;padding:10px;min-height:76px}
+  .stop .sign{font-size:44px;font-weight:bold;width:80px;height:80px;border-radius:14px;background:var(--sun);border:4px solid var(--ink);box-shadow:0 5px 0 var(--ink);color:var(--ink)}
   .stop button{font-size:40px;width:60px;height:60px;border-radius:50%;border:3px solid var(--ink);background:#fff;cursor:pointer;padding:0}
   .teacher{font-family:system-ui,sans-serif;font-size:15px}
   .teacher td,.teacher th{border-bottom:1px solid #ddd;padding:6px;text-align:left}
@@ -147,7 +148,8 @@
   <section class="screen" id="s-play">
     <div class="card">
       <h2>Jeepney Ride! 🚍</h2>
-      <div class="order"><span>Ride needs</span><b id="goal">3</b><span>passengers</span></div>
+      <div class="levels" id="modes"></div>
+      <div class="order" id="order"><span>Ride needs</span><b id="goal">3</b><span>passengers</span></div>
       <div class="road">
         <div class="jeep" id="jeep">
           <svg viewBox="0 0 320 170" aria-hidden="true">
@@ -163,7 +165,7 @@
         </div>
       </div>
       <div class="count-big"><span id="riders">0</span></div>
-      <p class="hint">Tap a friend to get on. Tap in the jeepney to get off.</p>
+      <p class="hint" id="rideHint">Tap a friend to get on. Tap in the jeepney to get off.</p>
       <div class="stop" id="stop"></div>
       <div class="row">
         <button class="btn b-sky" id="playSay">🔊</button>
@@ -453,34 +455,86 @@ $("traceNext").onclick=()=>{traceN=traceN>=max()?1:traceN+1;drawGuide()};
 /* ---------- PLAY ---------- */
 /* JEEPNEY RIDE: the child must PUT the right number of riders in,
    then press GO. Builds "make a set of N" (harder than "how many?"). */
-let answer=1, riders=[], busy=false;
-function askRide(){ say("The jeepney needs "+CONTENT.words[answer]+" passengers. Tap friends to get on!"); }
+/* Modes:
+   load = start empty, put N riders ON          (make a set)
+   off  = start too full, take riders OFF to N  (count back / remove)
+   sign = jeepney arrives full, tap the matching number sign (numeral ↔ quantity)
+   mix  = Bilang Bot rotates through all three */
+const MODES=[
+  {id:"load",name:"⬆️ Get on"},
+  {id:"off", name:"⬇️ Get off"},
+  {id:"sign",name:"🪧 Bus stop"},
+  {id:"mix", name:"🔀 Mix"}
+];
+let rideMode=state.rideMode||"load", roundMode="load", mixTurn=0;
+let answer=1, riders=[], waiting=[], busy=false;
+function drawModes(){
+  $("modes").innerHTML="";
+  MODES.forEach(m=>{ const b=document.createElement("button"); b.className="lvl"+(m.id===rideMode?" on":"");
+    b.textContent=m.name; b.onclick=()=>{rideMode=m.id; state.rideMode=m.id; save(); drawModes(); newQuestion();};
+    $("modes").appendChild(b); });
+}
+function askRide(){
+  if(roundMode==="load") say("The jeepney needs "+CONTENT.words[answer]+" passengers. Tap friends to get on!");
+  if(roundMode==="off")  say("Too many people! The jeepney needs only "+CONTENT.words[answer]+". Tap people to get off.");
+  if(roundMode==="sign") say("How many people are riding? Tap the sign with that number.");
+}
 function drawRide(){
-  $("riders").textContent=riders.length;
+  $("riders").textContent = roundMode==="sign" ? "?" : riders.length;
   $("seats").innerHTML=""; riders.forEach((p,i)=>{
     const d=document.createElement("div"); d.textContent=p;
-    d.onclick=()=>{ if(busy)return; riders.splice(i,1); waiting.push(p); drawRide(); say(riders.length?CONTENT.words[riders.length]:"zero"); };
+    d.onclick=()=>{ if(busy||roundMode==="sign")return; riders.splice(i,1); waiting.push(p); drawRide(); say(riders.length?CONTENT.words[riders.length]:"zero"); };
     $("seats").appendChild(d); });
-  $("stop").innerHTML=""; waiting.forEach((p,i)=>{
+  $("stop").innerHTML="";
+  if(roundMode==="sign"){ drawSigns(); return; }
+  waiting.forEach((p,i)=>{
     const b=document.createElement("button"); b.textContent=p; b.setAttribute("aria-label","passenger");
     b.onclick=()=>{ if(busy)return; waiting.splice(i,1); riders.push(p); drawRide(); say(CONTENT.words[riders.length]); };
     $("stop").appendChild(b); });
 }
-let waiting=[];
+let signs=[];
+function drawSigns(){
+  signs.forEach(n=>{
+    const b=document.createElement("button"); b.className="sign"; b.textContent=n;
+    b.onclick=()=>{ if(busy)return; const ok=n===answer; ding(ok); record(answer,ok);
+      if(ok) win(); else { b.classList.add("wiggle"); setTimeout(()=>b.classList.remove("wiggle"),500);
+        say("Not this stop. Touch each person and count."); } };
+    $("stop").appendChild(b); });
+}
+function win(){
+  busy=true; $("riders").textContent=answer;
+  say("Beep beep! "+CONTENT.words[answer]+" passengers. "+pick(CONTENT.praise));
+  $("jeep").classList.add("drive"); addStar(); setTimeout(newQuestion,2600);
+}
 function newQuestion(){
-  busy=false; answer=smartPick(); riders=[];
-  const extra=Math.min(answer+2, 20);                 // a few more friends than needed
-  waiting=Array.from({length:extra},()=>pick(CONTENT.passengers));
-  $("goal").textContent=answer;
+  busy=false; answer=smartPick();
+  roundMode = rideMode==="mix" ? ["load","off","sign"][mixTurn++%3] : rideMode;
+  const crowd=()=>pick(CONTENT.passengers);
+  if(roundMode==="load"){ riders=[]; waiting=Array.from({length:Math.min(answer+2,20)},crowd); }
+  if(roundMode==="off"){                                   // 1–3 too many on board
+    const over=Math.min(answer+1+Math.floor(Math.random()*3),20);
+    if(over===answer) answer=Math.max(1,answer-1);
+    riders=Array.from({length:Math.max(over,answer+1)},crowd); waiting=[];
+  }
+  if(roundMode==="sign"){
+    riders=Array.from({length:answer},crowd); waiting=[];
+    const s=new Set([answer]); while(s.size<Math.min(3,max())) s.add(1+Math.floor(Math.random()*max()));
+    signs=shuffle([...s]);
+  }
+  $("goal").textContent = roundMode==="sign" ? "?" : answer;
+  $("order").firstChild.textContent = roundMode==="off" ? "Only" : roundMode==="sign" ? "How many?" : "Ride needs";
+  $("rideHint").textContent = {load:"Tap a friend to get on. Tap in the jeepney to get off.",
+                               off:"Tap people in the jeepney to get off.",
+                               sign:"Count the riders, then tap the right sign."}[roundMode];
+  $("goBtn").style.display = roundMode==="sign" ? "none" : "";
   const j=$("jeep"); j.classList.remove("drive"); j.classList.add("enter");
   requestAnimationFrame(()=>requestAnimationFrame(()=>j.classList.remove("enter")));
-  drawRide(); askRide();
+  drawModes(); drawRide(); askRide();
 }
 $("goBtn").onclick=()=>{
   if(busy) return;
   const ok=riders.length===answer; ding(ok); record(answer,ok);
-  if(ok){ busy=true; say("Beep beep! "+CONTENT.words[answer]+" passengers. "+pick(CONTENT.praise));
-    $("jeep").classList.add("drive"); addStar(); setTimeout(newQuestion,2600); }
+  if(ok) win();
   else { $("jeep").classList.add("wiggle"); setTimeout(()=>$("jeep").classList.remove("wiggle"),500);
     say(riders.length<answer ? "We need more! Count again." : "Too many! Tap someone to get off."); }
 };
