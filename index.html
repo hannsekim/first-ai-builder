@@ -49,8 +49,19 @@
   .choice{font-size:40px;min-width:84px;min-height:84px;background:#fff;color:var(--ink)}
   canvas{display:block;margin:0 auto;background:#fff;border:4px dashed var(--sky);border-radius:20px;touch-action:none;width:100%;max-width:320px;aspect-ratio:1/1}
   nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--ink);padding:8px;gap:6px;z-index:5}
-  nav button{flex:1;font:inherit;font-size:15px;color:#fff;background:transparent;border:0;border-radius:16px;padding:8px 2px;cursor:pointer}
-  nav button .i{display:block;font-size:28px}
+  nav button{flex:1;font:inherit;font-size:13px;color:#fff;background:transparent;border:0;border-radius:16px;padding:8px 2px;cursor:pointer}
+  nav button .i{display:block;font-size:26px}
+  .mgrid{display:grid;grid-template-columns:repeat(var(--cols,4),1fr);gap:8px}
+  .mcard{aspect-ratio:3/4;border-radius:16px;border:4px solid var(--ink);cursor:pointer;position:relative;padding:0;background:none;perspective:600px}
+  .mcard .in{position:absolute;inset:0;transition:transform .4s;transform-style:preserve-3d}
+  .mcard.up .in{transform:rotateY(180deg)}
+  .mcard .f,.mcard .b{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;align-items:center;justify-content:center}
+  .mcard .b{background:repeating-linear-gradient(45deg,var(--sky) 0 12px,#5CC6F0 12px 24px);font-size:34px;color:#fff;font-weight:bold}
+  .mcard .f{transform:rotateY(180deg);background:#fff;flex-wrap:wrap;align-content:center;gap:1px;padding:4px}
+  .mcard .f.num{font-size:clamp(36px,12vw,60px);font-weight:bold;color:var(--tomato)}
+  .mcard .f.grp{font-size:clamp(13px,4.2vw,22px);line-height:1.05}
+  .mcard.done .f{background:#DFF7E5}
+  .mcard.done{border-color:var(--leaf)}
   nav button.on{background:var(--sun);color:var(--ink)}
   .screen{display:none} .screen.on{display:block}
   .sticker-book{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
@@ -161,7 +172,20 @@
     </div>
   </section>
 
-  <!-- 4. STICKERS -->
+  <!-- 4. MATCH: memory game, numeral ↔ group -->
+  <section class="screen" id="s-match">
+    <div class="card">
+      <h2>Match it! 🃏</h2>
+      <p class="hint">Find the number and the group that go together.</p>
+      <div class="mgrid" id="mgrid"></div>
+      <div class="row">
+        <button class="btn b-sky" id="matchSay">🔊</button>
+        <button class="btn b-tom" id="matchNew">🔄 New game</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. STICKERS -->
   <section class="screen" id="s-stickers">
     <div class="card">
       <h2>My Sticker Book 🏆</h2>
@@ -180,6 +204,7 @@
   <button class="on" data-s="learn"><span class="i">👀</span>Learn</button>
   <button data-s="trace"><span class="i">✏️</span>Trace</button>
   <button data-s="play"><span class="i">🎮</span>Play</button>
+  <button data-s="match"><span class="i">🃏</span>Match</button>
   <button data-s="stickers"><span class="i">🏆</span>Stickers</button>
 </nav>
 <div class="party" id="party"></div>
@@ -461,6 +486,48 @@ $("goBtn").onclick=()=>{
 };
 $("playSay").onclick=askRide;
 
+/* ---------- MATCH: memory cards, numeral ↔ group of objects ----------
+   Two cards flip at a time. Same number = match. Uses numbers the
+   AI buddy says the child needs most (smartPick), capped at 10. */
+let mFirst=null, mLock=false, mLeft=0;
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; }
+function newMatch(){
+  const top=Math.min(max(),10), pairs=Math.min(top,max()<=3?3:4), nums=new Set();
+  let guard=0; while(nums.size<pairs && guard++<200){ const n=smartPick(); if(n<=top) nums.add(n); }
+  for(let n=1;nums.size<pairs;n++) nums.add(n);
+  const cards=[]; [...nums].forEach(n=>{ cards.push({n,kind:"num"}); cards.push({n,kind:"grp",t:pick(CONTENT.things)}); });
+  shuffle(cards); mFirst=null; mLock=false; mLeft=pairs;
+  const g=$("mgrid"); g.style.setProperty("--cols", cards.length<=6?3:4); g.innerHTML="";
+  cards.forEach(c=>{
+    const b=document.createElement("button"); b.className="mcard"; b.setAttribute("aria-label","card");
+    const face = c.kind==="num" ? `<div class="f num">${c.n}</div>`
+                                : `<div class="f grp">${c.t.repeat(c.n)}</div>`;
+    b.innerHTML=`<div class="in"><div class="b">?</div>${face}</div>`;
+    b.onclick=()=>flip(b,c); g.appendChild(b);
+  });
+  say("Find a number and a group that match!");
+}
+function flip(b,c){
+  if(mLock || b.classList.contains("up")) return;
+  b.classList.add("up");
+  say(c.kind==="num" ? CONTENT.words[c.n] : CONTENT.words[c.n]+". Count them!");
+  if(!mFirst){ mFirst={b,c}; return; }
+  const a=mFirst; mFirst=null; mLock=true;
+  const ok = a.c.n===c.n && a.c.kind!==c.kind;
+  setTimeout(()=>{
+    ding(ok); record(c.n,ok);
+    if(ok){ a.b.classList.add("done"); b.classList.add("done"); mLeft--; mLock=false;
+      say("Match! "+CONTENT.words[c.n]+"!");
+      if(mLeft===0){ addStar(); setTimeout(()=>{say(pick(CONTENT.praise)+" You found them all!")},600); }
+    } else {
+      say(pick(["Not the same. Try again!","Oops! Count again.","Keep looking!"]));
+      setTimeout(()=>{ a.b.classList.remove("up"); b.classList.remove("up"); mLock=false; },900);
+    }
+  },700);
+}
+$("matchNew").onclick=newMatch;
+$("matchSay").onclick=()=>say("Find a number and a group that match!");
+
 /* ---------- STICKERS + TEACHER REPORT ---------- */
 function drawBook(){
   const got=Math.floor(state.stars/5);
@@ -486,6 +553,7 @@ function refresh(){
   if(current==="learn") drawLearn();
   if(current==="trace") drawGuide();
   if(current==="play") newQuestion();
+  if(current==="match") newMatch();
   if(current==="stickers"){ drawBook(); drawReport(); say("Look at your stickers!"); }
 }
 
