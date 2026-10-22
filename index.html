@@ -221,8 +221,8 @@
 const CONTENT = {
   buddyName: "Bilang Bot",
   language: "en-US",          // voice: "en-US", or "fil-PH" for Filipino if the device has it
-  voicePitch: 1.5,            // 1 = normal adult, 1.5 = younger/kid-like, 2 = highest
-  voiceRate: 0.9,             // 1 = normal speed; a little slower is clearer for little ones
+  voicePitch: 1.1,            // 1 = natural; 1.1 = warm, bright teacher voice; 1.5 = kid-like
+  voiceRate: 0.88,            // 1 = normal speed; a little slower is clearer for little ones
   words: ["zero","one","two","three","four","five","six","seven","eight","nine","ten",
           "eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty"],
   things: ["🥭","🐟","🌼","🐔","⭐","🍌","🐢","🎈","🚌","🐥"],   // objects to count
@@ -253,8 +253,9 @@ const pick = a => a[Math.floor(Math.random()*a.length)];
    raises the pitch so it sounds younger. Teachers can override
    the choice in Stickers → For the teacher → Voice. */
 let voices=[];
-const NATURAL=/natural|neural|enhanced|premium|siri|google|samantha|karen|moira|tessa|aria|jenny|ava|zoe|nicky/i;
-const CHILDLIKE=/child|kid|junior|ivy|justin|kevin|zoe|nicky|princess|kathy/i;
+const NATURAL=/natural|neural|enhanced|premium|siri|google/i;
+const FEMALE=/female|woman|samantha|karen|moira|tessa|ava|allison|susan|victoria|zira|aria|jenny|michelle|emma|joanna|salli|kendra|kimberly|serena|fiona|catherine|nicky|zoe|google us english/i;
+const MALE=/\bmale\b|daniel|alex\b|fred|tom\b|david|mark|guy|eric|aaron|arthur|gordon|rishi|matthew|joey|justin|kevin|brian/i;
 function loadVoices(){
   if(!("speechSynthesis" in window)) return;
   voices=speechSynthesis.getVoices().filter(v=>v.lang.slice(0,2)===CONTENT.language.slice(0,2));
@@ -262,7 +263,7 @@ function loadVoices(){
 }
 function bestVoice(){
   if(state.voice){ const v=voices.find(v=>v.name===state.voice); if(v) return v; }
-  const score=v=>(CHILDLIKE.test(v.name)?4:0)+(NATURAL.test(v.name)?3:0)+(/female|woman/i.test(v.name)?1:0)+(v.localService?0:1);
+  const score=v=>(FEMALE.test(v.name)?5:0)-(MALE.test(v.name)?6:0)+(NATURAL.test(v.name)?3:0)+(v.localService?0:1);
   return [...voices].sort((a,b)=>score(b)-score(a))[0]||null;
 }
 if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
@@ -276,7 +277,7 @@ function say(text){
     const v = bestVoice(); if(v) u.voice=v;
     u.lang = CONTENT.language;
     u.rate = CONTENT.voiceRate;
-    u.pitch = CONTENT.voicePitch + (Math.random()*.1-.05);   // small natural variation
+    u.pitch = CONTENT.voicePitch + (Math.random()*.06-.03);   // small natural variation
     speechSynthesis.speak(u);
   });
 }
